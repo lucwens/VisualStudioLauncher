@@ -1,0 +1,9 @@
+/build/
+/out/
+/.vs/
+/x64/
+*.user
+*.suo
+*.VC.db
+*.VC.VC.opendb
+/bin

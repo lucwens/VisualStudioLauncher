@@ -1,0 +1,80 @@
+#include <windows.h>
+#include <commctrl.h>
+#include "resource.h"
+
+IDI_APP ICON "Launcher.ico"
+
+IDD_MANAGER DIALOGEX 0, 0, 720, 347
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "Visual Studio Launcher"
+FONT 9, "Segoe UI", 400, 0, 1
+BEGIN
+    LTEXT "YOUR VISUAL STUDIO SOLUTIONS", -1, 12, 10, 460, 14
+    LTEXT "Choose your own names and colors. Save, then right-click the pinned launcher icon.", -1, 12, 25, 696, 11
+    CONTROL "", IDC_LIST, WC_LISTVIEW, WS_TABSTOP | WS_BORDER | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS, 12, 38, 696, 82
+    PUSHBUTTON "Add...", IDC_ADD, 12, 126, 66, 20
+    PUSHBUTTON "Duplicate", IDC_DUPLICATE, 84, 126, 70, 20
+    PUSHBUTTON "Remove", IDC_REMOVE, 160, 126, 66, 20
+    PUSHBUTTON "Move up", IDC_UP, 232, 126, 66, 20
+    PUSHBUTTON "Move down", IDC_DOWN, 304, 126, 76, 20
+    PUSHBUTTON "Open solution", IDC_OPEN, 612, 126, 96, 20
+
+    GROUPBOX "Selected solution", -1, 12, 150, 696, 114
+    LTEXT "Display name", -1, 24, 167, 65, 11
+    EDITTEXT IDC_NAME, 96, 164, 280, 16, ES_AUTOHSCROLL
+    LTEXT "Group", -1, 392, 167, 48, 11
+    EDITTEXT IDC_GROUP, 450, 164, 246, 16, ES_AUTOHSCROLL
+    LTEXT "Branch label", -1, 24, 187, 65, 11
+    EDITTEXT IDC_BRANCH, 96, 184, 280, 16, ES_AUTOHSCROLL
+    LTEXT "Icon color", -1, 392, 187, 48, 11
+    PUSHBUTTON "#2563EB", IDC_COLOR, 450, 183, 96, 18
+    AUTOCHECKBOX "Show in Jump List", IDC_ENABLED, 560, 186, 136, 12
+    LTEXT "Solution", -1, 24, 207, 65, 11
+    EDITTEXT IDC_PATH, 96, 204, 532, 16, ES_AUTOHSCROLL
+    PUSHBUTTON "Browse...", IDC_BROWSE_PATH, 638, 203, 58, 18
+    LTEXT "Custom .ico", -1, 24, 227, 65, 11
+    EDITTEXT IDC_CUSTOM_ICON, 96, 224, 442, 16, ES_AUTOHSCROLL
+    PUSHBUTTON "Browse...", IDC_BROWSE_ICON, 548, 223, 64, 18
+    PUSHBUTTON "Use color", IDC_USE_COLOR, 620, 223, 76, 18
+    LTEXT "VS override", -1, 24, 247, 65, 11
+    EDITTEXT IDC_STUDIO, 96, 244, 532, 16, ES_AUTOHSCROLL
+    PUSHBUTTON "Browse...", IDC_BROWSE_STUDIO, 638, 243, 58, 18
+
+    LTEXT "Default Visual Studio", -1, 12, 274, 96, 11
+    EDITTEXT IDC_DEFAULT_STUDIO, 116, 271, 512, 16, ES_AUTOHSCROLL
+    PUSHBUTTON "Browse...", IDC_BROWSE_DEFAULT, 638, 270, 70, 18
+    LTEXT "", IDC_STATUS, 12, 296, 696, 18
+    PUSHBUTTON "Create Start shortcut", IDC_SHORTCUT, 12, 321, 120, 20
+    PUSHBUTTON "Settings folder", IDC_SETTINGS, 140, 321, 100, 20
+    DEFPUSHBUTTON "Save / update menu", IDC_SAVE, 496, 321, 120, 20
+    PUSHBUTTON "Close", IDCANCEL, 626, 321, 82, 20
+END
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,0
+ PRODUCTVERSION 1,0,0,0
+ FILEFLAGSMASK 0x3fL
+ FILEFLAGS 0x0L
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_APP
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName", "CTech\0"
+            VALUE "FileDescription", "Visual Studio Solution Launcher\0"
+            VALUE "FileVersion", "1.0.0\0"
+            VALUE "InternalName", "VisualStudioLauncher\0"
+            VALUE "OriginalFilename", "VisualStudioLauncher.exe\0"
+            VALUE "ProductName", "Visual Studio Launcher\0"
+            VALUE "ProductVersion", "1.0.0\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

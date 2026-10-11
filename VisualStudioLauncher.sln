@@ -1,0 +1,21 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.10.12224.181 stable
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VisualStudioLauncher", "VisualStudioLauncher.vcxproj", "{AFBE575B-F6E2-4B59-8CF1-81AB44528483}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AFBE575B-F6E2-4B59-8CF1-81AB44528483}.Debug|x64.ActiveCfg = Debug|x64
+		{AFBE575B-F6E2-4B59-8CF1-81AB44528483}.Debug|x64.Build.0 = Debug|x64
+		{AFBE575B-F6E2-4B59-8CF1-81AB44528483}.Release|x64.ActiveCfg = Release|x64
+		{AFBE575B-F6E2-4B59-8CF1-81AB44528483}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
