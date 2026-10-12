@@ -65,6 +65,10 @@ Settings LoadSettings();
 void SaveSettings(const Settings &settings);
 std::string NewId();
 std::filesystem::path EntryIcon(const Entry &entry);
+// Branch checked out in the Git repository containing the solution; empty when there is none.
+std::string GitBranch(const std::string &solutionPath);
+// DisplayName with the branch taken from Git when the entry asks for it.
+std::string EntryDisplayName(const Entry &entry);
 void OpenSolution(const Settings &settings, const Entry &entry, HWND owner);
 std::wstring PublishJumpList(const Settings &settings);
 std::filesystem::path CreateStartMenuShortcut();

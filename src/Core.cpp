@@ -442,6 +442,15 @@ Settings ParseSettings(const std::string &json)
         entry.name = Text(value, "name");
         entry.group = Text(value, "group", "Solutions");
         entry.branch = Text(value, "branch");
+        const auto fromGit = value.object.find("branchFromGit");
+        if (fromGit != value.object.end())
+        {
+            if (fromGit->second.kind != Json::Kind::Boolean)
+            {
+                throw std::runtime_error("branchFromGit must be boolean");
+            }
+            entry.branchFromGit = fromGit->second.boolean;
+        }
         entry.path = Text(value, "path");
         entry.color = Text(value, "color", "#2563EB");
         if (!IsValidColor(entry.color))
@@ -473,6 +482,7 @@ std::string SerializeSettings(const Settings &settings)
         const auto &e = settings.entries[i];
         out << "    {\n      \"id\": " << Escape(e.id) << ",\n      \"name\": " << Escape(e.name)
             << ",\n      \"group\": " << Escape(e.group) << ",\n      \"branch\": " << Escape(e.branch)
+            << ",\n      \"branchFromGit\": " << (e.branchFromGit ? "true" : "false")
             << ",\n      \"path\": " << Escape(e.path) << ",\n      \"color\": " << Escape(e.color)
             << ",\n      \"icon\": " << Escape(e.icon) << ",\n      \"visualStudio\": " << Escape(e.visualStudio)
             << ",\n      \"enabled\": " << (e.enabled ? "true" : "false") << "\n    }"
@@ -484,7 +494,29 @@ std::string SerializeSettings(const Settings &settings)
 
 std::string DisplayName(const Entry &entry)
 {
-    return entry.name + (entry.branch.empty() ? "" : " [" + entry.branch + "]");
+    return DisplayName(entry.name, entry.branch);
+}
+
+std::string DisplayName(const std::string &name, const std::string &branch)
+{
+    return name + (branch.empty() ? "" : " [" + branch + "]");
+}
+
+std::string BranchFromHead(const std::string &head)
+{
+    const auto end = head.find_last_not_of(" \t\r\n");
+    const auto line = head.substr(0, end == std::string::npos ? 0 : end + 1);
+    const std::string prefix = "ref: refs/heads/";
+    if (line.compare(0, prefix.size(), prefix) == 0)
+    {
+        return line.substr(prefix.size());
+    }
+    if (line.size() >= 40 &&
+        std::all_of(line.begin(), line.end(), [](unsigned char c) { return std::isxdigit(c) != 0; }))
+    {
+        return line.substr(0, 7); // Detached HEAD: show the short commit hash.
+    }
+    return {};
 }
 
 std::wstring QuoteArgument(const std::wstring &argument)

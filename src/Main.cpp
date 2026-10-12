@@ -81,10 +81,23 @@ void UpdateRow(HWND dialog, int row)
 {
     const auto &entry = State(dialog).settings.entries[row];
     const HWND list = GetDlgItem(dialog, IDC_LIST);
-    Column(list, row, 0, DisplayName(entry));
+    Column(list, row, 0, EntryDisplayName(entry));
     Column(list, row, 1, entry.group.empty() ? "Solutions" : entry.group);
     Column(list, row, 2, entry.path);
     Column(list, row, 3, entry.enabled ? "Yes" : "No");
+}
+
+// Show the manual label, or the detected Git branch read-only.
+void ShowBranch(HWND dialog, const Entry *entry)
+{
+    auto &state = State(dialog);
+    const bool fromGit = entry && entry->branchFromGit;
+    const bool loading = state.loading;
+    state.loading = true;
+    SendDlgItemMessageW(dialog, IDC_BRANCH_SOURCE, CB_SETCURSEL, fromGit ? 1 : 0, 0);
+    Text(dialog, IDC_BRANCH, !entry ? "" : (fromGit ? GitBranch(entry->path) : entry->branch));
+    SendDlgItemMessageW(dialog, IDC_BRANCH, EM_SETREADONLY, fromGit, 0);
+    state.loading = loading;
 }
 
 void ReadEditor(HWND dialog)
@@ -98,8 +111,17 @@ void ReadEditor(HWND dialog)
     {
         entry->name = Utf8(Text(dialog, IDC_NAME));
         entry->group = Utf8(Text(dialog, IDC_GROUP));
-        entry->branch = Utf8(Text(dialog, IDC_BRANCH));
-        entry->path = Utf8(Text(dialog, IDC_PATH));
+        const auto path = Utf8(Text(dialog, IDC_PATH));
+        if (!entry->branchFromGit)
+        {
+            entry->branch = Utf8(Text(dialog, IDC_BRANCH));
+        }
+        else if (path != entry->path)
+        {
+            entry->path = path;
+            ShowBranch(dialog, entry);
+        }
+        entry->path = path;
         entry->icon = Utf8(Text(dialog, IDC_CUSTOM_ICON));
         entry->visualStudio = Utf8(Text(dialog, IDC_STUDIO));
         entry->enabled = IsDlgButtonChecked(dialog, IDC_ENABLED) == BST_CHECKED;
@@ -120,15 +142,15 @@ void PopulateEditor(HWND dialog)
     const auto &value = entry ? *entry : empty;
     Text(dialog, IDC_NAME, entry ? value.name : "");
     Text(dialog, IDC_GROUP, entry ? value.group : "");
-    Text(dialog, IDC_BRANCH, value.branch);
+    ShowBranch(dialog, entry);
     Text(dialog, IDC_PATH, value.path);
     Text(dialog, IDC_CUSTOM_ICON, value.icon);
     Text(dialog, IDC_STUDIO, value.visualStudio);
     Text(dialog, IDC_COLOR, value.color);
     CheckDlgButton(dialog, IDC_ENABLED, value.enabled && entry ? BST_CHECKED : BST_UNCHECKED);
     for (const auto id :
-         {IDC_NAME, IDC_GROUP, IDC_BRANCH, IDC_PATH, IDC_CUSTOM_ICON, IDC_STUDIO, IDC_COLOR, IDC_ENABLED,
-          IDC_BROWSE_PATH, IDC_BROWSE_ICON, IDC_USE_COLOR, IDC_BROWSE_STUDIO, IDC_DUPLICATE, IDC_REMOVE, IDC_OPEN})
+         {IDC_NAME, IDC_GROUP, IDC_BRANCH_SOURCE, IDC_BRANCH, IDC_PATH, IDC_CUSTOM_ICON, IDC_STUDIO, IDC_COLOR,
+          IDC_ENABLED, IDC_BROWSE_PATH, IDC_BROWSE_ICON, IDC_USE_COLOR, IDC_BROWSE_STUDIO, IDC_DUPLICATE, IDC_REMOVE, IDC_OPEN})
     {
         EnableWindow(GetDlgItem(dialog, id), entry != nullptr);
     }
@@ -176,7 +198,7 @@ void RefreshList(HWND dialog)
         {
             DestroyIcon(icon);
         }
-        auto name = Wide(DisplayName(entry));
+        auto name = Wide(EntryDisplayName(entry));
         LVITEMW item{};
         item.mask = LVIF_TEXT | LVIF_IMAGE;
         item.iItem = static_cast<int>(i);
@@ -544,6 +566,9 @@ INT_PTR CALLBACK Dialog(HWND dialog, UINT message, WPARAM wParam, LPARAM lParam)
             {
                 SendDlgItemMessageW(dialog, id, EM_SETLIMITTEXT, 32760, 0);
             }
+            SendDlgItemMessageW(dialog, IDC_BRANCH_SOURCE, CB_ADDSTRING, 0,
+                                reinterpret_cast<LPARAM>(L"Edit yourself"));
+            SendDlgItemMessageW(dialog, IDC_BRANCH_SOURCE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"From Git"));
             state.loading = true;
             Text(dialog, IDC_DEFAULT_STUDIO, state.settings.visualStudio);
             state.loading = false;
@@ -572,6 +597,17 @@ INT_PTR CALLBACK Dialog(HWND dialog, UINT message, WPARAM wParam, LPARAM lParam)
             if (HIWORD(wParam) == EN_CHANGE)
             {
                 ReadEditor(dialog);
+            }
+            else if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == IDC_BRANCH_SOURCE)
+            {
+                if (auto *entry = Selected(dialog))
+                {
+                    entry->branchFromGit =
+                        SendDlgItemMessageW(dialog, IDC_BRANCH_SOURCE, CB_GETCURSEL, 0, 0) == 1;
+                    ShowBranch(dialog, entry);
+                    UpdateRow(dialog, State(dialog).selected);
+                    MarkDirty(dialog);
+                }
             }
             else if (HIWORD(wParam) == BN_CLICKED)
             {
@@ -706,6 +742,13 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int)
                 throw std::runtime_error("This entry no longer exists. Open the manager and save to refresh the menu.");
             }
             OpenSolution(settings, *it, nullptr);
+            try
+            {
+                PublishJumpList(settings); // Pick up branches switched since the last update.
+            }
+            catch (...)
+            {
+            }
             return 0;
         }
         if (argc == 2 && argv[1] == L"--refresh")

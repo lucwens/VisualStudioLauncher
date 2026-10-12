@@ -216,6 +216,75 @@ std::filesystem::path EntryIcon(const Entry &entry)
     return path;
 }
 
+namespace
+{
+std::string ReadSmallFile(const std::filesystem::path &path)
+{
+    std::ifstream input(path, std::ios::binary);
+    std::string text(4096, '\0');
+    input.read(text.data(), static_cast<std::streamsize>(text.size()));
+    text.resize(static_cast<size_t>(input.gcount()));
+    return text;
+}
+} // namespace
+
+std::string GitBranch(const std::string &solutionPath)
+{
+    // Read HEAD directly instead of running git.exe: cheap enough for every list refresh.
+    try
+    {
+        if (solutionPath.empty())
+        {
+            return {};
+        }
+        std::error_code error;
+        const std::filesystem::path solution(Wide(solutionPath));
+        if (!solution.is_absolute())
+        {
+            return {};
+        }
+        for (auto directory = solution.parent_path(), previous = std::filesystem::path();
+             !directory.empty() && directory != previous; previous = directory, directory = directory.parent_path())
+        {
+            const auto git = directory / L".git";
+            auto gitDirectory = git;
+            if (std::filesystem::is_regular_file(git, error))
+            {
+                // Worktrees and submodules: ".git" is a file containing "gitdir: <path>".
+                auto text = ReadSmallFile(git);
+                const std::string prefix = "gitdir:";
+                if (text.compare(0, prefix.size(), prefix) != 0)
+                {
+                    return {};
+                }
+                text = text.substr(prefix.size());
+                const auto first = text.find_first_not_of(" \t");
+                const auto last = text.find_last_not_of(" \t\r\n");
+                if (first == std::string::npos || last == std::string::npos)
+                {
+                    return {};
+                }
+                const std::filesystem::path target(Wide(text.substr(first, last - first + 1)));
+                gitDirectory = target.is_absolute() ? target : directory / target;
+            }
+            else if (!std::filesystem::is_directory(git, error))
+            {
+                continue;
+            }
+            return BranchFromHead(ReadSmallFile(gitDirectory / L"HEAD"));
+        }
+    }
+    catch (...)
+    {
+    } // Missing or unreadable repositories simply show no branch.
+    return {};
+}
+
+std::string EntryDisplayName(const Entry &entry)
+{
+    return entry.branchFromGit ? DisplayName(entry.name, GitBranch(entry.path)) : DisplayName(entry);
+}
+
 void OpenSolution(const Settings &settings, const Entry &entry, HWND owner)
 {
     const std::filesystem::path solution(Wide(entry.path));
@@ -390,7 +459,7 @@ std::wstring PublishJumpList(const Settings &settings)
                 truncated = true;
                 continue;
             }
-            auto link = Link(Wide(DisplayName(entry)), arguments, EntryIcon(entry), Wide(entry.path));
+            auto link = Link(Wide(EntryDisplayName(entry)), arguments, EntryIcon(entry), Wide(entry.path));
             Check(items->AddObject(link.Get()), "Add solution to Jump List");
             included.push_back(&entry);
             ++visible;
@@ -409,7 +478,7 @@ std::wstring PublishJumpList(const Settings &settings)
             // Keep the manual launch commands with their icons and group labels.
             for (const auto *entry : included)
             {
-                auto link = Link(Wide(group + " - " + DisplayName(*entry)), L"--open " + Wide(entry->id),
+                auto link = Link(Wide(group + " - " + EntryDisplayName(*entry)), L"--open " + Wide(entry->id),
                                  EntryIcon(*entry), Wide(entry->path));
                 Check(tasks->AddObject(link.Get()), "Add fallback launch command");
             }

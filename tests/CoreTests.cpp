@@ -54,6 +54,15 @@ int main()
         Require(restored.entries[1].path == dev.path && !restored.entries[1].enabled, "UNC path or visibility changed");
         Require(restored.entries[0].id == main.id && restored.entries[1].id == dev.id, "Stable IDs or order changed");
         Require(DisplayName(main) == main.name + " [main]", "Branch label missing");
+        Require(!restored.entries[0].branchFromGit, "Manual branch source changed");
+        Settings fromGit;
+        fromGit.entries.push_back(main);
+        fromGit.entries[0].branchFromGit = true;
+        Require(ParseSettings(SerializeSettings(fromGit)).entries[0].branchFromGit, "Git branch source lost");
+        Require(BranchFromHead("ref: refs/heads/feature/robot\n") == "feature/robot", "Branch HEAD misread");
+        Require(BranchFromHead("0123456789abcdef0123456789abcdef01234567\r\n") == "0123456", "Detached HEAD misread");
+        Require(BranchFromHead("garbage").empty() && BranchFromHead("").empty(), "Invalid HEAD accepted");
+        Reject(R"({"version":1,"entries":[{"id":"a","branchFromGit":"yes"}]})");
         const auto unicode = ParseSettings(R"({"version":1,"entries":[{"id":"a","name":"\u00e9 \ud83d\ude80"}]})");
         Require(unicode.entries[0].name == u8"é 🚀", "Unicode escape pair decoded incorrectly");
         Reject(R"({"version":2,"entries":[]})");

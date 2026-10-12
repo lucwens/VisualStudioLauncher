@@ -5,7 +5,7 @@ A small native C++17 Windows application for a **manually maintained**, color-co
 - **Right-click the pinned launcher icon:** choose a named solution with a colored icon.
 - **Left-click the icon:** open the manager dialog, or activate it if it is already open.
 - Choosing a solution starts Visual Studio through `devenv.exe` or the Windows solution file association. The launcher exits after handing off the launch.
-- No repository scans, branch switching, automatic recent-file imports, tray service, or background monitoring.
+- No repository scans (only an optional read of the solution's current Git branch), branch switching, automatic recent-file imports, tray service, or background monitoring.
 
 ## Install in your requested folder
 
@@ -36,7 +36,7 @@ The program creates only its own Start-menu shortcut and per-user settings. It d
 | Move up / Move down | Set the manual order. Category order follows the first entry in each group; entries keep their relative order within each category. |
 | Display name | Your label, independent of the solution filename. |
 | Group | A native Jump List category, such as CTrack, Robotics, or Utilities. |
-| Branch label | A manually entered suffix, displayed as `CTrack [develop]`. It does not query or change Git. |
+| Branch label | A suffix displayed as `CTrack [develop]`. Choose **Edit yourself** to type it, or **From Git** to show the branch checked out in the repository containing the solution (read from `.git/HEAD`, worktrees included; a short hash when detached). Git is never changed. The Jump List picks up branch switches whenever the manager opens, you save, or you launch an entry. |
 | Icon color | Choose any RGB color. Generates an antialiased colored icon with a white code symbol. Choosing a color clears the custom icon override. |
 | Custom .ico | Use an existing icon; the launcher saves a managed copy when you save. |
 | Use color | Clear the custom icon and use the colored built-in symbol again. |
