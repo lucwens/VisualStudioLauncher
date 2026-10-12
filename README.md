@@ -161,6 +161,24 @@ See `VALIDATION.md` for the checks run on this package. Native Windows taskbar b
 
 To remove the launcher, unpin its taskbar icon, delete its Start shortcut, and delete the extracted project folder. Delete the settings directory separately only if you also want to erase your configured list.
 
+## Why this is not a Visual Studio extension
+
+Converting the launcher into an add-in that loads directly in Visual Studio 2026 was evaluated. It cannot replace the executable without losing its main feature, so the project stays a standalone application.
+
+- **Nothing runs before VS starts.** The launcher is a pinned taskbar icon whose Jump List starts Visual Studio on a chosen solution. An extension only exists inside a running VS instance, so it cannot start VS or act as the icon you click.
+- **The Jump List belongs to the launcher's own identity.** It is built with `ICustomDestinationList` under the launcher's own application ID (`src/Platform.cpp`). An extension runs inside `devenv.exe`, which has its own Jump List managed by VS. Writing custom categories into it would be fragile and could be overwritten at any time.
+- **Extensions are managed code.** VS 2026 extensions are .NET (VSIX or VisualStudio.Extensibility), so the native C++ code would need a full rewrite, and the Win32 manager dialog would become a WPF or tool-window UI.
+
+| Feature | As a VS add-in |
+| --- | --- |
+| Manager UI (add, remove, reorder, colors, groups) | Possible, as a tool window |
+| Branch label from Git | Possible, VS already knows the branch |
+| Switch to another listed solution from a running VS | Possible, via a menu or tool window |
+| Colored per-solution taskbar Jump List | Not possible |
+| Launching VS from a cold start | Not possible |
+
+**Possible future direction:** keep this executable for the taskbar and cold start, and add a small VS extension that reads and edits the same `%LOCALAPPDATA%\CTech\VisualStudioLauncher\settings.json`. That adds in-IDE solution switching with one shared configuration and no loss of functionality.
+
 ## Windows API references
 
 - [ICustomDestinationList](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-icustomdestinationlist)
