@@ -5,7 +5,8 @@ A small native C++17 Windows application for a **manually maintained**, color-co
 - **Right-click the pinned launcher icon:** choose a named solution with a colored icon.
 - **Left-click the icon:** open the manager dialog, or activate it if it is already open.
 - Choosing a solution starts Visual Studio through `devenv.exe` or the Windows solution file association. The launcher exits after handing off the launch.
-- No repository scans (only an optional read of the solution's current Git branch), branch switching, automatic recent-file imports, tray service, or background monitoring.
+- No repository scans (only an optional read of the solution's current Git branch), branch switching, tray service, or background monitoring. Your manual list is never modified automatically.
+- The bottom of the menu has a read-only **Recent in Visual Studio** category: the solutions Visual Studio itself lists as recent (read from its per-user settings, newest first). Jump Lists cannot nest submenus, so a separate category is the closest equivalent.
 
 ## Install in your requested folder
 
@@ -64,7 +65,7 @@ Other versions or editions may have different installation paths. Select their a
 ## Windows Jump List behavior
 
 - The menu uses the native Windows style. Color is supplied through icons; Windows controls text color and layout.
-- Windows decides how many destinations fit. The launcher respects the limit returned by Windows and reports truncation in the manager. All entries are still available through the manager's Open button.
+- Windows decides how many destinations fit (10 by default, shared by all categories). The launcher respects the limit returned by Windows and reports truncation in the manager. Your configured entries come first, so the **Recent in Visual Studio** category only shows what is left over. All configured entries are still available through the manager's Open button.
 - Items you remove through Windows' **Remove from this list** remain hidden during subsequent menu updates. Duplicate the entry in the manager to create a new identity if you want to restore it.
 - Some Windows privacy or application-registration policies block custom categories. For the known access/registration failures, the launcher puts the colored commands under **Tasks**, prefixed with the group name, and reports this in the status line. Other failures display an error; the settings remain saved so you can retry.
 - The fallback Tasks section has Windows' own menu-size restrictions. The manager always retains the complete configured list.
@@ -151,6 +152,7 @@ Command-line modes:
 VisualStudioLauncher.exe                  Open manager
 VisualStudioLauncher.exe --manage         Open or activate manager
 VisualStudioLauncher.exe --open ENTRY_ID  Launch a configured solution
+VisualStudioLauncher.exe --open-path FILE Launch a solution file, as used by the recent category
 VisualStudioLauncher.exe --refresh        Rebuild the Jump List from saved settings
 VisualStudioLauncher.exe --install        Create Start shortcut and rebuild the Jump List
 ```

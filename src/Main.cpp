@@ -751,6 +751,21 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int)
             }
             return 0;
         }
+        if (argc == 3 && argv[1] == L"--open-path")
+        {
+            const auto settings = LoadSettings();
+            Entry recent;
+            recent.path = Utf8(argv[2]);
+            OpenSolution(settings, recent, nullptr);
+            try
+            {
+                PublishJumpList(settings); // Move the opened solution to the top of the recent list.
+            }
+            catch (...)
+            {
+            }
+            return 0;
+        }
         if (argc == 2 && argv[1] == L"--refresh")
         {
             PublishJumpList(LoadSettings());
@@ -764,7 +779,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int)
         }
         if (argc > 1 && !(argc == 2 && argv[1] == L"--manage"))
         {
-            throw std::runtime_error("Usage: VisualStudioLauncher.exe [--manage | --open ID | --refresh | --install]");
+            throw std::runtime_error("Usage: VisualStudioLauncher.exe [--manage | --open ID | --open-path FILE | --refresh | --install]");
         }
         const HANDLE rawMutex = CreateMutexW(nullptr, FALSE, ManagerMutex);
         const DWORD mutexError = GetLastError();

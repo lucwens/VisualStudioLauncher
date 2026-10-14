@@ -8,6 +8,9 @@
 #include <sstream>
 #include <set>
 #include <algorithm>
+#include <cstdlib>
+#include <cwctype>
+#include <string.h>
 
 namespace launcher
 {
@@ -329,6 +332,133 @@ void OpenSolution(const Settings &settings, const Entry &entry, HWND owner)
 
 namespace
 {
+// Case-insensitive, separator-insensitive key for comparing solution paths.
+std::wstring PathKey(const std::string &path)
+{
+    auto key = std::filesystem::path(Wide(path)).lexically_normal().wstring();
+    std::transform(key.begin(), key.end(), key.begin(), [](wchar_t c) { return static_cast<wchar_t>(towlower(c)); });
+    return key;
+}
+
+std::string XmlUnescape(const std::string &text)
+{
+    std::string out;
+    out.reserve(text.size());
+    for (size_t i = 0; i < text.size(); ++i)
+    {
+        const auto end = text[i] == '&' ? text.find(';', i) : std::string::npos;
+        if (end == std::string::npos || end - i > 10)
+        {
+            out += text[i];
+            continue;
+        }
+        const auto name = text.substr(i + 1, end - i - 1);
+        if (name == "quot")
+        {
+            out += '"';
+        }
+        else if (name == "amp")
+        {
+            out += '&';
+        }
+        else if (name == "lt")
+        {
+            out += '<';
+        }
+        else if (name == "gt")
+        {
+            out += '>';
+        }
+        else if (name == "apos")
+        {
+            out += '\'';
+        }
+        else if (name.size() > 1 && name[0] == '#')
+        {
+            const bool hex = name[1] == 'x' || name[1] == 'X';
+            const auto code = std::strtoul(name.c_str() + (hex ? 2 : 1), nullptr, hex ? 16 : 10);
+            out += Utf8(std::wstring(1, static_cast<wchar_t>(code)));
+        }
+        else
+        {
+            out += text[i];
+            continue;
+        }
+        i = end;
+    }
+    return out;
+}
+
+std::string RecentJson(const std::filesystem::path &file)
+{
+    std::ifstream input(file, std::ios::binary);
+    std::string xml((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+    const auto collection = xml.find("<collection name=\"CodeContainers.Offline\">");
+    if (collection == std::string::npos)
+    {
+        return {};
+    }
+    const std::string open = "<value name=\"value\">";
+    const auto start = xml.find(open, collection);
+    const auto end = start == std::string::npos ? start : xml.find("</value>", start);
+    if (end == std::string::npos)
+    {
+        return {};
+    }
+    return XmlUnescape(xml.substr(start + open.size(), end - start - open.size()));
+}
+} // namespace
+
+std::vector<RecentSolution> LoadRecentSolutions()
+{
+    std::vector<RecentSolution> merged;
+    std::error_code error;
+    const auto root = KnownFolder(FOLDERID_LocalAppData) / L"Microsoft" / L"VisualStudio";
+    for (const auto &directory : std::filesystem::directory_iterator(root, error))
+    {
+        const auto name = directory.path().filename().wstring();
+        const bool experimental = name.size() >= 3 && name.compare(name.size() - 3, 3, L"Exp") == 0;
+        if (name.empty() || !iswdigit(name[0]) || experimental)
+        {
+            continue; // Only real instances; skip experimental hives and support folders.
+        }
+        try
+        {
+            const auto file = directory.path() / L"ApplicationPrivateSettings.xml";
+            if (!std::filesystem::is_regular_file(file, error))
+            {
+                continue;
+            }
+            const auto json = RecentJson(file);
+            if (json.empty())
+            {
+                continue;
+            }
+            for (auto &item : ParseRecentSolutions(json))
+            {
+                const auto same = std::find_if(merged.begin(), merged.end(), [&](const RecentSolution &other)
+                                               { return _stricmp(other.path.c_str(), item.path.c_str()) == 0; });
+                if (same == merged.end())
+                {
+                    merged.push_back(std::move(item));
+                }
+                else if (same->lastAccessed < item.lastAccessed)
+                {
+                    same->lastAccessed = item.lastAccessed;
+                }
+            }
+        }
+        catch (...)
+        {
+        } // An unreadable Visual Studio hive just contributes nothing.
+    }
+    std::stable_sort(merged.begin(), merged.end(), [](const RecentSolution &a, const RecentSolution &b)
+                     { return a.lastAccessed > b.lastAccessed; });
+    return merged;
+}
+
+namespace
+{
 void SetTextProperty(IPropertyStore *store, REFPROPERTYKEY key, const std::wstring &text)
 {
     PROPVARIANT value{};
@@ -486,6 +616,83 @@ std::wstring PublishJumpList(const Settings &settings)
         else
         {
             Check(result, "Add Jump List category");
+        }
+    }
+    // Last category: Visual Studio's own recent list, so it sits at the bottom of the menu.
+    std::vector<RecentSolution> recents;
+    try
+    {
+        recents = LoadRecentSolutions();
+    }
+    catch (...)
+    {
+    }
+    {
+        auto items = Collection();
+        std::vector<std::wstring> titles;
+        std::vector<std::wstring> argumentsList;
+        std::vector<std::wstring> paths;
+        std::set<std::wstring> configured; // Already in the menu above; do not repeat them.
+        for (const auto &entry : settings.entries)
+        {
+            if (entry.enabled)
+            {
+                try
+                {
+                    configured.insert(PathKey(entry.path));
+                }
+                catch (...)
+                {
+                }
+            }
+        }
+        for (const auto &recent : recents)
+        {
+            if (configured.count(PathKey(recent.path)))
+            {
+                continue;
+            }
+            const auto arguments = L"--open-path " + QuoteArgument(Wide(recent.path));
+            if (hidden.count(arguments))
+            {
+                continue;
+            }
+            if (visible >= available)
+            {
+                truncated = true;
+                continue;
+            }
+            const std::filesystem::path file(Wide(recent.path));
+            auto title = file.filename().wstring();
+            if (file.parent_path().has_filename())
+            {
+                title += L"  (" + file.parent_path().filename().wstring() + L")";
+            }
+            auto link = Link(title, arguments, ExecutablePath(), Wide(recent.path));
+            Check(items->AddObject(link.Get()), "Add recent solution to Jump List");
+            titles.push_back(title);
+            argumentsList.push_back(arguments);
+            paths.push_back(Wide(recent.path));
+            ++visible;
+        }
+        if (!titles.empty())
+        {
+            ComPtr<IObjectArray> array;
+            Check(items->QueryInterface(IID_PPV_ARGS(array.Put())), "Get recent items");
+            const auto result = list->AppendCategory(L"Recent in Visual Studio", array.Get());
+            if (result == E_ACCESSDENIED || result == static_cast<HRESULT>(0x80040F03L))
+            {
+                fallback = true;
+                for (size_t i = 0; i < titles.size(); ++i)
+                {
+                    auto link = Link(L"Recent - " + titles[i], argumentsList[i], ExecutablePath(), paths[i]);
+                    Check(tasks->AddObject(link.Get()), "Add fallback recent command");
+                }
+            }
+            else
+            {
+                Check(result, "Add recent category");
+            }
         }
     }
     ComPtr<IObjectArray> taskArray;

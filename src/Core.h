@@ -20,6 +20,13 @@ struct Entry
     bool enabled = true;
 };
 
+// A solution from Visual Studio's most-recently-used list.
+struct RecentSolution
+{
+    std::string path;
+    std::string lastAccessed; // ISO 8601 timestamp; sorts chronologically as text.
+};
+
 struct Settings
 {
     std::string visualStudio;
@@ -28,6 +35,8 @@ struct Settings
 
 Settings ParseSettings(const std::string &json);
 std::string SerializeSettings(const Settings &settings);
+// Solutions (.sln/.slnx) from Visual Studio's "CodeContainers" JSON value, newest first.
+std::vector<RecentSolution> ParseRecentSolutions(const std::string &json);
 std::string DisplayName(const Entry &entry);
 std::string DisplayName(const std::string &name, const std::string &branch);
 // Branch name from the contents of a .git/HEAD file; a short hash when detached, empty when unrecognised.

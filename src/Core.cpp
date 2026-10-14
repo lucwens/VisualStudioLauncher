@@ -473,6 +473,51 @@ Settings ParseSettings(const std::string &json)
     return settings;
 }
 
+std::vector<RecentSolution> ParseRecentSolutions(const std::string &json)
+{
+    const auto root = Parser(json).Parse();
+    if (root.kind != Json::Kind::Array)
+    {
+        throw std::runtime_error("Recent list must be an array");
+    }
+    std::vector<RecentSolution> result;
+    for (const auto &item : root.array)
+    {
+        if (item.kind != Json::Kind::Object)
+        {
+            continue;
+        }
+        const auto value = item.object.find("Value");
+        if (value == item.object.end() || value->second.kind != Json::Kind::Object)
+        {
+            continue;
+        }
+        const auto local = value->second.object.find("LocalProperties");
+        if (local == value->second.object.end() || local->second.kind != Json::Kind::Object)
+        {
+            continue;
+        }
+        const auto path = local->second.object.find("FullPath");
+        const auto type = local->second.object.find("Type");
+        if (path == local->second.object.end() || path->second.kind != Json::Kind::String ||
+            (type != local->second.object.end() && type->second.text != "0") || !IsSolutionPath(path->second.text))
+        {
+            continue; // Folders and loose projects are not launchable solutions.
+        }
+        RecentSolution recent;
+        recent.path = path->second.text;
+        const auto accessed = value->second.object.find("LastAccessed");
+        if (accessed != value->second.object.end() && accessed->second.kind == Json::Kind::String)
+        {
+            recent.lastAccessed = accessed->second.text;
+        }
+        result.push_back(std::move(recent));
+    }
+    std::stable_sort(result.begin(), result.end(), [](const RecentSolution &a, const RecentSolution &b)
+                     { return a.lastAccessed > b.lastAccessed; });
+    return result;
+}
+
 std::string SerializeSettings(const Settings &settings)
 {
     std::ostringstream out;

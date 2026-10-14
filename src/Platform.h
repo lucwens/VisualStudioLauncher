@@ -70,6 +70,8 @@ std::string GitBranch(const std::string &solutionPath);
 // DisplayName with the branch taken from Git when the entry asks for it.
 std::string EntryDisplayName(const Entry &entry);
 void OpenSolution(const Settings &settings, const Entry &entry, HWND owner);
+// Visual Studio's recent solutions, merged across installed (non-experimental) instances, newest first.
+std::vector<RecentSolution> LoadRecentSolutions();
 std::wstring PublishJumpList(const Settings &settings);
 std::filesystem::path CreateStartMenuShortcut();
 void WriteColorIcon(const std::filesystem::path &path, const std::string &color);

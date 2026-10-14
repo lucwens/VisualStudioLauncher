@@ -81,6 +81,14 @@ int main()
         Require(QuoteArgument(L"C:\\A B\\") == L"\"C:\\A B\\\\\"", "Trailing slash not escaped");
         Require(QuoteArgument(L"a\"b") == L"\"a\\\"b\"", "Quote not escaped");
         Require(QuoteArgument(L"") == L"\"\"", "Empty argument changed");
+        const auto recent = ParseRecentSolutions(
+            R"([{"Key":"a","Value":{"LocalProperties":{"FullPath":"D:\\old\\A.sln","Type":0},"LastAccessed":"2026-01-01T00:00:00+00:00"}},)"
+            R"({"Key":"b","Value":{"LocalProperties":{"FullPath":"D:\\dir","Type":1},"LastAccessed":"2026-09-01T00:00:00+00:00"}},)"
+            R"({"Key":"c","Value":{"LocalProperties":{"FullPath":"D:\\p.vcxproj","Type":0},"LastAccessed":"2026-09-01T00:00:00+00:00"}},)"
+            R"({"Key":"d","Value":{"LocalProperties":{"FullPath":"D:\\new\\B.slnx","Type":0},"LastAccessed":"2026-05-01T00:00:00+00:00"}}])");
+        Require(recent.size() == 2, "Recent list kept folders or projects");
+        Require(recent[0].path == R"(D:\new\B.slnx)" && recent[1].path == R"(D:\old\A.sln)",
+                "Recent list order wrong");
         std::cout << "All configuration, Unicode, stable-ID, and Windows argument checks passed.\n";
         return 0;
     }
